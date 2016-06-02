@@ -1,25 +1,96 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
-
-
-## Loading and preprocessing the data
+Reproducible Research
+==========================
+### Assignment 1 - Harsh Gupta
 
 
 
-## What is mean total number of steps taken per day?
+### Loading and preprocessing the data
+
+```{r}
+setwd("~/Desktop")
+activity<-read.csv(file = 'activity.csv',header = T)
+str(activity)
+```
+
+### What is mean total number of steps taken per day?
+
+Histogram of the total number of steps taken each day
+
+```{r}
+total_per_day<-aggregate(steps~date,data = activity,FUN = sum)
+hist(total_per_day$steps,main = "Total Steps by Day", xlab = "Total Steps per Day", col = "red")
+```
+
+The mean & median number of steps is calculated as follows:
+
+```{r}
+mean(total_per_day$steps)
+median(total_per_day$steps)
+```
+
+### What is the average daily activity pattern?
+
+Time series plot of the 5-minute interval & average number of steps taken, averaged across all days
+
+```{r}
+mean_per_interval<-aggregate(steps~interval,data = activity,FUN = mean)
+plot(steps~interval,type="l",data=mean_per_interval)
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+mean_per_interval[which.max(mean_per_interval$steps),]$interval
+```
+
+### Imputing missing values
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r}
+sum((is.na(activity$steps)))
+```
+
+Devise a strategy for filling in all of the missing values in the dataset.  
+Here we use MICE package from CRAN repository and use Predictive Mean Matching method for imputing the values.
+To read more about this package and its working, click [here](https://cran.r-project.org/web/packages/mice/index.html)
+
+```{r}
+library("mice")
+
+        temp<-mice(data = activity,m = 1,method = "pmm",maxit = 1, seed = 500)
+        activity_final<-complete(temp,1)
+```
 
 
+Total number of steps taken each day
 
-## What is the average daily activity pattern?
+```{r}
+total_per_day_new<-aggregate(steps~date,data = activity_final,FUN = sum)
+hist(total_per_day_new$steps, main = "Total Steps by Day", xlab = "Total Steps per Day", col = "red")
+```
 
+The mean & median number of steps is calculated as follows:
 
+```{r}
+mean(total_per_day_new$steps)
+median(total_per_day_new$steps)
+```
 
-## Imputing missing values
+The values of mean & median both increased, owing to the fact that missing values were imputed using predictive mean matching method. More number of iterations can be chosen in the function call and then analysis can be done for all the datasets henceforth generated but that would be more suitable for analysis involving modelling.
 
+### Are there differences in activity patterns between weekdays and weekends?
 
+Creating a new factor variable in the dataset with two levels ??? ???weekday??? and ???weekend???
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity_final$daytype<-as.factor(ifelse(weekdays(as.Date(activity_final$date))=='Saturday'|
+                                        weekdays(as.Date(activity_final$date))=='Sunday',"Weekend","Weekday"))
+```
+
+Creating plot for average steps by each interval averaged over weekdays & weekends
+
+```{r}
+mean_per_daytype<-aggregate(steps~interval+daytype,data = activity_final,FUN = mean)
+lattice::xyplot(steps~interval|daytype,mean_per_daytype,type="l",layout=c(1,2))
+```
